@@ -14,11 +14,14 @@ export type Customer = {
 
 export type Invoice = {
   id: string;
-  customer_id: string;
+  name: string;
+  email: string;
+  image_url: string;
   amount: number;
   date: string;
   status: 'pending' | 'paid';
 };
+
 
 export type Revenue = {
   month: string;

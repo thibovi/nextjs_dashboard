@@ -23,24 +23,27 @@ export async function fetchRevenue(): Promise<Revenue[]> {
   return data;
 }
 
-export async function fetchLatestInvoices(): Promise<LatestInvoice[]> {
+export async function fetchLatestInvoices() {
   const { data, error } = await supabase
     .from('invoices')
     .select(`
       id,
       amount,
-      customers!inner(name, email, image_url)
+      customers:customer_id (name, email, image_url)
     `)
     .order('date', { ascending: false })
     .limit(5);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching latest invoices:', error);
+    return [];
+  }
 
-  return data.map((invoice) => ({
+  return data.map((invoice: any) => ({
     id: invoice.id,
-    name: invoice.customers?.[0]?.name ?? 'Unknown',       // ✅ Gebruik [0]
-    email: invoice.customers?.[0]?.email ?? 'No email',    // ✅ Gebruik [0]
-    image_url: invoice.customers?.[0]?.image_url ?? '/images/fallback-avatar.png',
+    name: invoice.customers?.name || 'Unknown',
+    email: invoice.customers?.email || 'No email',
+    image_url: invoice.customers?.image_url || '/images/fallback-avatar.png',
     amount: invoice.amount.toString(),
   }));
 }
@@ -70,4 +73,38 @@ export async function fetchCardData(): Promise<CardData> {
     totalPaidInvoices: String(stats.paid ?? 0),
     totalPendingInvoices: String(stats.pending ?? 0),
   };
+}
+
+
+export async function fetchFilteredInvoices(query: string, currentPage: number): Promise<Invoice[]> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(`
+      id,
+      amount,
+      date,
+      status,
+      customers(name, email, image_url)
+    `)
+    .or(
+      `name.ilike.%${query}%,email.ilike.%${query}%`,
+      { foreignTable: 'customers' } // ✅ Correct gebruik van foreignTable
+    )
+    .order('date', { ascending: false })
+    .range((currentPage - 1) * 10, currentPage * 10 - 1);
+
+  if (error) {
+    console.error('Error fetching filtered invoices:', error);
+    return [];
+  }
+
+  return data.map((invoice: any) => ({
+    id: invoice.id,
+    name: invoice.customers?.name || 'Unknown',
+    email: invoice.customers?.email || 'No email',
+    image_url: invoice.customers?.image_url || '/images/fallback-avatar.png',
+    amount: invoice.amount,
+    date: invoice.date,
+    status: invoice.status,
+  }));
 }
