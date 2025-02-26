@@ -11,10 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_KEY!
 );
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL || 'Not loaded');
-console.log('SUPABASE_KEY:', process.env.SUPABASE_KEY || 'Not loaded');
-console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL || 'Not loaded');
-console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'Not loaded');
+
 const FALLBACK_IMAGE = '/images/fallback-avatar.png';
 
 export async function fetchRevenue(): Promise<Revenue[]> {
@@ -41,8 +38,8 @@ export async function fetchLatestInvoices() {
 
   return data.map((invoice: any) => ({
     id: invoice.id,
-    name: invoice.customers?.name || 'Unknown',
-    email: invoice.customers?.email || 'No email',
+    name: invoice.customers?.[0]?.name || 'Unknown',
+    email: invoice.customers?.[0]?.email || 'No email',
     image_url: invoice.customers?.image_url || '/images/fallback-avatar.png',
     amount: invoice.amount.toString(),
   }));
@@ -76,22 +73,32 @@ export async function fetchCardData(): Promise<CardData> {
 }
 
 
-export async function fetchFilteredInvoices(query: string, currentPage: number): Promise<Invoice[]> {
-  const { data, error } = await supabase
+export async function fetchFilteredInvoices(query: string, currentPage: number) {
+  const ITEMS_PER_PAGE = 10;
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  // ✅ Gebruik een query builder zonder `.or()`
+  let queryBuilder = supabase
     .from('invoices')
-    .select(`
+    .select(
+      `
       id,
       amount,
       date,
       status,
-      customers(name, email, image_url)
-    `)
-    .or(
-      `name.ilike.%${query}%,email.ilike.%${query}%`,
-      { foreignTable: 'customers' } // ✅ Correct gebruik van foreignTable
+      customers!inner(id, name, email, image_url)
+    `
     )
     .order('date', { ascending: false })
-    .range((currentPage - 1) * 10, currentPage * 10 - 1);
+    .range(offset, offset + ITEMS_PER_PAGE - 1);
+
+  // ✅ Voeg correcte filter toe zonder `.or()`
+  if (query.trim()) {
+    queryBuilder = queryBuilder.ilike('customers.name', `%${query}%`);
+    queryBuilder = queryBuilder.ilike('customers.email', `%${query}%`);
+  }
+
+  const { data, error } = await queryBuilder;
 
   if (error) {
     console.error('Error fetching filtered invoices:', error);
@@ -103,8 +110,8 @@ export async function fetchFilteredInvoices(query: string, currentPage: number):
     name: invoice.customers?.name || 'Unknown',
     email: invoice.customers?.email || 'No email',
     image_url: invoice.customers?.image_url || '/images/fallback-avatar.png',
-    amount: invoice.amount,
-    date: invoice.date,
+    amount: invoice.amount.toString(),
     status: invoice.status,
+    date: invoice.date,
   }));
 }
