@@ -74,3 +74,17 @@ export async function updateInvoice(id: string, formData: FormData): Promise<voi
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
 }
+
+export async function deleteInvoice(id: string) {
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id);
+  
+    if (error) {
+      console.error('❌ Error deleting invoice:', error);
+      throw new Error('Failed to delete invoice.');
+    }
+  
+    revalidatePath('/dashboard/invoices');
+  }
