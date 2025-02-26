@@ -156,3 +156,22 @@ export async function fetchCustomers(): Promise<Customer[]> {
     image_url: customer.image_url || FALLBACK_IMAGE,
   }));
 }
+
+export async function fetchInvoiceById(id: string) {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', id)
+      .single(); // ✅ Zorgt ervoor dat er maar één resultaat wordt teruggegeven
+
+    if (error) throw error;
+
+    console.log("✅ Fetch Invoice:", data);
+    
+    return data; // ✅ Moet een object zijn, geen array
+  } catch (error) {
+    console.error("❌ Error fetching invoice:", error);
+    return null;
+  }
+}
