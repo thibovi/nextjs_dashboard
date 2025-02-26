@@ -17,62 +17,73 @@ const FormSchema = z.object({
 });
 
 export async function createInvoice(formData: FormData): Promise<void> {
-  const validatedData = FormSchema.safeParse({
-    customer_id: formData.get('customerId') as string,
-    amount: Number(formData.get('amount')) * 100, // Opslaan in centen
-    status: formData.get('status') as 'pending' | 'paid',
-  });
+    
+    const validatedData = FormSchema.safeParse({
+        customer_id: formData.get('customerId') as string,
+        amount: Number(formData.get('amount')) * 100, // Opslaan in centen
+        status: formData.get('status') as 'pending' | 'paid',
+    });
 
-  if (!validatedData.success) {
-    console.error("Validation Error:", validatedData.error.format());
-    return;
-  }
+    if (!validatedData.success) {
+        console.error("Validation Error:", validatedData.error.format());
+        return;
+    }
 
-  // Huidige datum in 'YYYY-MM-DD' formaat
-  const date = new Date().toISOString().split('T')[0];
+    try {
+        // Huidige datum in 'YYYY-MM-DD' formaat
+        const date = new Date().toISOString().split('T')[0];
 
-  const { error } = await supabase.from('invoices').insert({
-    customer_id: validatedData.data.customer_id,
-    amount: validatedData.data.amount,
-    status: validatedData.data.status,
-    date,
-  });
+        const { error } = await supabase.from('invoices').insert({
+            customer_id: validatedData.data.customer_id,
+            amount: validatedData.data.amount,
+            status: validatedData.data.status,
+            date,
+        });
 
-  if (error) {
-    console.error("Error inserting invoice:", error);
-    return;
-  }
+        if (error) {
+            console.error("Error inserting invoice:", error);
+            return;
+        }
+    } catch (err) {
+        console.error("Unexpected error:", err);
+        return;
+    }
 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+    revalidatePath('/dashboard/invoices');
+    redirect('/dashboard/invoices');
 }
 
-//async function updateinvoice
 export async function updateInvoice(id: string, formData: FormData): Promise<void> {
-  const validatedData = FormSchema.safeParse({
-    customer_id: formData.get('customerId') as string,
-    amount: Number(formData.get('amount')) * 100, // Opslaan in centen
-    status: formData.get('status') as 'pending' | 'paid',
-  });
+    const validatedData = FormSchema.safeParse({
+        customer_id: formData.get('customerId') as string,
+        amount: Number(formData.get('amount')) * 100, // Opslaan in centen
+        status: formData.get('status') as 'pending' | 'paid',
+    });
 
-  if (!validatedData.success) {
-    console.error("Validation Error:", validatedData.error.format());
-    return;
-  }
+    if (!validatedData.success) {
+        console.error("Validation Error:", validatedData.error.format());
+        return;
+    }
 
-  const { error } = await supabase.from('invoices').update({
-    customer_id: validatedData.data.customer_id,
-    amount: validatedData.data.amount,
-    status: validatedData.data.status,
-  }).match({ id });
+    try {
+        const { error } = await supabase.from('invoices').update({
+            customer_id: validatedData.data.customer_id,
+            amount: validatedData.data.amount,
+            status: validatedData.data.status,
+        }).match({ id });
 
-  if (error) {
-    console.error("Error updating invoice:", error);
-    return;
-  }
+        if (error) {
+            console.error("Error updating invoice:", error);
+            return;
+        }
 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+        revalidatePath('/dashboard/invoices');
+        redirect('/dashboard/invoices');
+    } catch (err) {
+        console.error("Unexpected error:", err);
+    }
+    revalidatePath('/dashboard/invoices');
+    redirect('/dashboard/invoices');
 }
 
 export async function deleteInvoice(id: string) {

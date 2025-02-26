@@ -115,35 +115,26 @@ export async function fetchFilteredInvoices(query: string, currentPage: number) 
     date: invoice.date,
   }));
 }
-export async function fetchInvoicesPages(query: string): Promise<number> {
-  const ITEMS_PER_PAGE = 10;
-
+export async function fetchInvoicesPages(query: string) {
   try {
-    const { data, error } = await supabase
-    .from('invoices')
-    .select(`
-      id,
-      amount,
-      customer_id,
-      customers (name, email, image_url)
-    `)
-    .or(`name.ilike.%${query}%, email.ilike.%${query}%`, { foreignTable: 'customers' }) // ✅ Correcte syntax
-    .order('date', { ascending: false })
-    .range(0, 9);
-  
-  if (error) {
-    console.error('❌ Error fetching total invoice pages:', error);
-    return 0;
+    const { count, error } = await supabase
+      .from('invoices')
+      .select('*', { count: 'exact', head: true }) // 🔍 Haalt enkel de count op, geen data
+
+    if (error) {
+      console.error('❌ Error fetching total invoice pages:', error);
+      return 1;
+    }
+
+    console.log('✅ Total Invoices Count:', count); // Log de count
+
+    const ITEMS_PER_PAGE = 10;
+    return Math.max(Math.ceil((count || 0) / ITEMS_PER_PAGE), 1);
+  } catch (error) {
+    console.error('❌ Unexpected error fetching total invoice pages:', error);
+    return 1;
   }
-  
-  console.log('✅ Filtered invoices count:', data.length);
-  return Math.ceil((data.length || 0) / ITEMS_PER_PAGE);
-  }
-  catch (error) {
-    console.error('❌ Error fetching total invoice pages:', error);
-    return 0;
-  }
-}  
+}
 
 //fetchCustomers
 export async function fetchCustomers(): Promise<Customer[]> {
